@@ -8,6 +8,58 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize modules
   Scanner.init();
 
+  // ---- Theme Toggle ----
+  const btnThemeToggle = document.getElementById('btn-theme-toggle');
+  const themeIcon = document.getElementById('theme-icon');
+  
+  function applyTheme(isDark) {
+    if (isDark) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      if (themeIcon) themeIcon.textContent = 'light_mode';
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      if (themeIcon) themeIcon.textContent = 'dark_mode';
+    }
+  }
+
+  // Load saved preference or default to light mode
+  const savedTheme = localStorage.getItem('brandguard_theme');
+  let isDarkMode = savedTheme === 'dark';
+  applyTheme(isDarkMode);
+
+  if (btnThemeToggle) {
+    btnThemeToggle.addEventListener('click', () => {
+      isDarkMode = !isDarkMode;
+      localStorage.setItem('brandguard_theme', isDarkMode ? 'dark' : 'light');
+      applyTheme(isDarkMode);
+    });
+  }
+
+  // ---- Mobile Menu Toggle ----
+  const btnMobileMenu = document.getElementById('btn-mobile-menu');
+  const sidebar = document.querySelector('.sidebar');
+  const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+  if (btnMobileMenu && sidebar && sidebarOverlay) {
+    function toggleMobileMenu() {
+      sidebar.classList.toggle('mobile-open');
+      sidebarOverlay.classList.toggle('active');
+    }
+
+    btnMobileMenu.addEventListener('click', toggleMobileMenu);
+    sidebarOverlay.addEventListener('click', toggleMobileMenu);
+    
+    // Close sidebar when a navigation item is clicked on mobile
+    document.querySelectorAll('.sidebar-item[data-screen]').forEach(item => {
+      item.addEventListener('click', () => {
+        if (window.innerWidth <= 768) {
+          sidebar.classList.remove('mobile-open');
+          sidebarOverlay.classList.remove('active');
+        }
+      });
+    });
+  }
+
   // ---- Screen Navigation ----
   const screens = {
     welcome: document.getElementById('screen-welcome'),
@@ -320,6 +372,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const activeData = allBrands.find(b => b.id === brandId);
     const isCustom = activeData && !activeData.isPreset;
 
+    const modeIndicator = document.getElementById('brand-mode-indicator');
+    if (modeIndicator) {
+      if (isCustom) {
+        modeIndicator.innerHTML = '<span class="material-symbols-rounded" style="font-size:14px">edit</span> EDIT MODE';
+        modeIndicator.style.color = 'var(--blue-600)';
+        modeIndicator.style.borderColor = 'var(--blue-200)';
+        modeIndicator.style.background = 'var(--blue-50)';
+      } else {
+        modeIndicator.innerHTML = '<span class="material-symbols-rounded" style="font-size:14px">visibility</span> VIEW ONLY';
+        modeIndicator.style.color = 'var(--text-secondary)';
+        modeIndicator.style.borderColor = 'var(--border)';
+        modeIndicator.style.background = 'var(--bg-section)';
+      }
+    }
+
     const nameInput = document.getElementById('rule-brand-name');
     const taglineInput = document.getElementById('rule-tagline');
     const logoDesc = document.getElementById('rule-logo-desc');
@@ -596,6 +663,13 @@ document.addEventListener('DOMContentLoaded', () => {
         stores: []
       });
       updateBrandUI();
+      setTimeout(() => {
+        const nameInput = document.getElementById('rule-brand-name');
+        if (nameInput) {
+          nameInput.focus();
+          nameInput.select();
+        }
+      }, 0);
     });
   }
 

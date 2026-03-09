@@ -22,6 +22,9 @@
        ============================== -->
   <header class="top-header">
     <div class="header-left">
+      <button class="mobile-menu-toggle" id="btn-mobile-menu">
+        <span class="material-symbols-rounded">menu</span>
+      </button>
       <a href="https://www.thebrand.ai" class="header-logo" target="_blank">
         <div class="logo-icon">
           <span class="material-symbols-rounded">shield</span>
@@ -41,6 +44,9 @@
         <span class="brand-dot" id="brand-dot"></span>
         <span id="brand-chip-name">Safaricom</span>
       </div>
+      <button class="header-btn" id="btn-theme-toggle" title="Toggle Dark/Light Mode">
+        <span class="material-symbols-rounded" style="font-size:16px" id="theme-icon">dark_mode</span>
+      </button>
       <button class="header-btn" id="btn-settings-open">
         <span class="material-symbols-rounded" style="font-size:16px">settings</span>
         API Settings
@@ -105,6 +111,7 @@
   <!-- ==============================
        MAIN CONTENT AREA
        ============================== -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
   <main class="main-content">
 
     <!-- ===== SCREEN 1: DASHBOARD / WELCOME ===== -->
@@ -207,7 +214,11 @@
         <div class="brand-tabs" id="brand-tabs-container">
           <!-- Populated by JS -->
         </div>
-        <button class="btn-secondary" id="btn-add-brand" style="flex-shrink:0; padding: 6px 12px; height: 32px; margin-left: auto;">
+        <div class="brand-mode-indicator" id="brand-mode-indicator" style="margin-left:auto; margin-right: 12px; display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 4px; background: var(--bg-section); border: 1px solid var(--border);">
+          <span class="material-symbols-rounded" style="font-size:14px">visibility</span>
+          VIEW ONLY
+        </div>
+        <button class="btn-secondary" id="btn-add-brand" style="flex-shrink:0; padding: 6px 12px; height: 32px;">
           <span class="material-symbols-rounded" style="font-size:16px">add</span>
           New Brand
         </button>
@@ -224,15 +235,18 @@
           <div class="rule-card-body">
             <div class="rule-row">
               <label>Brand Name</label>
-              <input type="text" class="rule-input" id="rule-brand-name" value="Safaricom" readonly>
+              <input type="text" class="rule-input" id="rule-brand-name" value="Safaricom" readonly placeholder="Enter the exact brand name">
+              <small class="rule-helper-text">This will be used to label reports and store locations.</small>
             </div>
             <div class="rule-row">
-              <label>Tagline</label>
-              <input type="text" class="rule-input" id="rule-tagline" value="The Better Option" readonly>
+              <label>Tagline (Optional)</label>
+              <input type="text" class="rule-input" id="rule-tagline" value="The Better Option" readonly placeholder="e.g. Taste the Feeling">
+              <small class="rule-helper-text">AI will look for this text associated with the brand.</small>
             </div>
             <div class="rule-row">
               <label>Logo Description</label>
-              <textarea class="rule-input rule-textarea" id="rule-logo-desc" readonly>Green "Safaricom" wordmark with red swoosh arc</textarea>
+              <textarea class="rule-input rule-textarea" id="rule-logo-desc" readonly placeholder="Describe what the authentic logo looks like..."></textarea>
+              <small class="rule-helper-text">Be specific about shapes, icons, and text layout. The AI uses this to find fraudulent or incorrectly printed logos.</small>
             </div>
           </div>
         </div>
@@ -287,15 +301,18 @@
           <div class="rule-card-body">
             <div class="rule-row">
               <label>Heading Font</label>
-              <input type="text" class="rule-input" id="rule-font-heading" value="Safaricom Sans Bold" readonly>
+              <input type="text" class="rule-input" id="rule-font-heading" value="Safaricom Sans Bold" readonly placeholder="e.g. Arial Bold">
+              <small class="rule-helper-text">The primary font used for titles and headers.</small>
             </div>
             <div class="rule-row">
               <label>Body Font</label>
-              <input type="text" class="rule-input" id="rule-font-body" value="Safaricom Sans Regular" readonly>
+              <input type="text" class="rule-input" id="rule-font-body" value="Safaricom Sans Regular" readonly placeholder="e.g. Open Sans">
+              <small class="rule-helper-text">The secondary font used for normal paragraph text.</small>
             </div>
             <div class="rule-row">
               <label>Acceptable Alternates</label>
-              <input type="text" class="rule-input" id="rule-font-alternates" value="Arial, Helvetica Neue, Helvetica" readonly>
+              <input type="text" class="rule-input" id="rule-font-alternates" value="Arial, Helvetica Neue, Helvetica" readonly placeholder="Comma separated, e.g. Helvetica, Arial">
+              <small class="rule-helper-text">Fallback fonts that are acceptable if the primary fonts are unavailable.</small>
             </div>
           </div>
         </div>
@@ -307,6 +324,7 @@
             Brand Compliance Rules
           </div>
           <div class="rule-card-body">
+            <p class="rule-helper-text" style="margin-bottom: 12px; margin-top: 0;">Provide highly specific 'must-have' rules. The AI will strictly enforce these during a scan.</p>
             <ul class="brand-rules-list" id="brand-rules-list">
               <!-- Populated by JS -->
             </ul>

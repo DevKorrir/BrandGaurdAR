@@ -1,6 +1,7 @@
 /* ============================================
    BrandGuard AR — Scanner Module
    Camera access, image analysis, AR overlays
+   Updated for AI-powered scanning
    ============================================ */
 
 const Scanner = (() => {
@@ -15,10 +16,17 @@ const Scanner = (() => {
     ctx: null,
     placeholder: null,
     analyzingOverlay: null,
+    analyzingText: null,
     scanLine: null,
     issuesBadge: null,
-    tooltipFont: null,
+    issuesText: null,
+    tooltipFinding: null,
+    tooltipCategory: null,
+    tooltipText: null,
+    tooltipSuggestion: null,
+    tooltipLabel: null,
     matchBadge: null,
+    matchBadgeText: null,
   };
 
   function init() {
@@ -28,10 +36,17 @@ const Scanner = (() => {
     elements.ctx = elements.canvas?.getContext('2d');
     elements.placeholder = document.getElementById('scan-placeholder');
     elements.analyzingOverlay = document.getElementById('analyzing-overlay');
+    elements.analyzingText = document.getElementById('analyzing-text');
     elements.scanLine = document.getElementById('scan-line');
     elements.issuesBadge = document.getElementById('scan-issues-badge');
-    elements.tooltipFont = document.getElementById('tooltip-font');
+    elements.issuesText = document.getElementById('scan-issues-text');
+    elements.tooltipFinding = document.getElementById('tooltip-finding');
+    elements.tooltipCategory = document.getElementById('tooltip-finding-category');
+    elements.tooltipText = document.getElementById('tooltip-finding-text');
+    elements.tooltipSuggestion = document.getElementById('tooltip-finding-suggestion');
+    elements.tooltipLabel = document.getElementById('tooltip-finding-label');
     elements.matchBadge = document.getElementById('match-badge');
+    elements.matchBadgeText = document.getElementById('match-badge-text');
   }
 
   // Start webcam
@@ -50,7 +65,6 @@ const Scanner = (() => {
       elements.uploadedImage.style.display = 'none';
       elements.placeholder.style.display = 'none';
 
-      // Wait for video to load then resize canvas
       elements.video.addEventListener('loadedmetadata', () => {
         resizeCanvas();
       });
@@ -77,22 +91,30 @@ const Scanner = (() => {
 
   // Show uploaded image
   function showUploadedImage(file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      elements.uploadedImage.src = e.target.result;
-      elements.uploadedImage.style.display = 'block';
-      elements.video.style.display = 'none';
-      elements.placeholder.style.display = 'none';
+    return new Promise((resolve, reject) => {
+      if (!file) {
+        reject(new Error("No file provided"));
+        return;
+      }
 
-      // Stop camera if running
-      stopCamera();
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        elements.uploadedImage.onload = () => {
+          elements.uploadedImage.style.display = 'block';
+          elements.video.style.display = 'none';
+          elements.placeholder.style.display = 'none';
 
-      elements.uploadedImage.onload = () => {
-        resizeCanvas();
-        startAnalysis();
+          // Stop camera if running
+          stopCamera();
+          resizeCanvas();
+          resolve();
+        };
+        elements.uploadedImage.onerror = reject;
+        elements.uploadedImage.src = e.target.result;
       };
-    };
-    reader.readAsDataURL(file);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   }
 
   function showPlaceholder() {
@@ -110,45 +132,35 @@ const Scanner = (() => {
     }
   }
 
-  // Start scanning analysis (simulated)
-  function startAnalysis() {
-    isScanning = true;
-
-    // Show scan line animation
+  // Show analyzing state
+  function showAnalyzing(message) {
+    if (elements.analyzingText) {
+      elements.analyzingText.textContent = message || 'Analyzing brand assets with AI...';
+    }
     if (elements.scanLine) {
       elements.scanLine.classList.add('scanning');
     }
-
-    // Show analyzing overlay briefly
     if (elements.analyzingOverlay) {
       elements.analyzingOverlay.classList.add('visible');
     }
-
-    // Simulate ML processing delay
-    scanTimeout = setTimeout(() => {
-      // Hide analyzing overlay
-      if (elements.analyzingOverlay) {
-        elements.analyzingOverlay.classList.remove('visible');
-      }
-
-      // Stop scan line
-      if (elements.scanLine) {
-        elements.scanLine.classList.remove('scanning');
-      }
-
-      // Draw AR overlays
-      drawAROverlays();
-
-      // Show badges and tooltips
-      showARElements();
-
-      isScanning = false;
-    }, 2500);
+    isScanning = true;
   }
 
-  // Draw AR overlay elements on canvas
-  function drawAROverlays() {
+  // Hide analyzing state
+  function hideAnalyzing() {
+    if (elements.analyzingOverlay) {
+      elements.analyzingOverlay.classList.remove('visible');
+    }
+    if (elements.scanLine) {
+      elements.scanLine.classList.remove('scanning');
+    }
+    isScanning = false;
+  }
+
+  // Draw AR overlays based on actual AI findings
+  function drawAROverlays(findings) {
     if (!elements.ctx || !elements.canvas) return;
+    if (!findings || findings.length === 0) return;
 
     const w = elements.canvas.width;
     const h = elements.canvas.height;
@@ -156,114 +168,153 @@ const Scanner = (() => {
 
     ctx.clearRect(0, 0, w, h);
 
-    // === Green circle for logo (pass) ===
-    const logoX = w * 0.35;
-    const logoY = h * 0.55;
-    const logoR = Math.min(w, h) * 0.12;
+    // Position findings across the viewport
+    findings.forEach((finding, i) => {
+      const cols = Math.min(findings.length, 3);
+      const row = Math.floor(i / cols);
+      const col = i % cols;
 
-    // Glow effect
-    ctx.beginPath();
-    ctx.arc(logoX, logoY, logoR + 8, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(34, 197, 94, 0.2)';
-    ctx.lineWidth = 12;
-    ctx.stroke();
+      const cellW = w / cols;
+      const cellH = h / Math.ceil(findings.length / cols);
+      const cx = cellW * col + cellW / 2;
+      const cy = cellH * row + cellH / 2;
 
-    // Main circle
-    ctx.beginPath();
-    ctx.arc(logoX, logoY, logoR, 0, Math.PI * 2);
-    ctx.strokeStyle = '#22C55E';
-    ctx.lineWidth = 3;
-    ctx.stroke();
+      if (finding.status === 'pass') {
+        // Green circle with checkmark
+        const r = Math.min(cellW, cellH) * 0.18;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r + 6, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(34, 197, 94, 0.2)';
+        ctx.lineWidth = 10;
+        ctx.stroke();
 
-    // Checkmark inside
-    ctx.beginPath();
-    ctx.moveTo(logoX - logoR * 0.3, logoY);
-    ctx.lineTo(logoX - logoR * 0.05, logoY + logoR * 0.25);
-    ctx.lineTo(logoX + logoR * 0.35, logoY - logoR * 0.2);
-    ctx.strokeStyle = '#22C55E';
-    ctx.lineWidth = 2.5;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = '#22C55E';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
 
-    // === Red rectangle for font issue (fail) ===
-    const fontX = w * 0.55;
-    const fontY = h * 0.3;
-    const fontW = w * 0.35;
-    const fontH = h * 0.12;
+        // Checkmark
+        ctx.beginPath();
+        ctx.moveTo(cx - r * 0.3, cy);
+        ctx.lineTo(cx - r * 0.05, cy + r * 0.25);
+        ctx.lineTo(cx + r * 0.35, cy - r * 0.2);
+        ctx.strokeStyle = '#22C55E';
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+      } else if (finding.status === 'fail') {
+        // Red dashed rectangle
+        const rw = cellW * 0.6;
+        const rh = cellH * 0.35;
+        const rx = cx - rw / 2;
+        const ry = cy - rh / 2;
 
-    // Glow
-    ctx.strokeStyle = 'rgba(239, 68, 68, 0.2)';
-    ctx.lineWidth = 8;
-    ctx.strokeRect(fontX - 4, fontY - 4, fontW + 8, fontH + 8);
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.2)';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(rx - 3, ry - 3, rw + 6, rh + 6);
 
-    // Main rectangle
-    ctx.strokeStyle = '#EF4444';
-    ctx.lineWidth = 2.5;
-    ctx.setLineDash([8, 4]);
-    ctx.strokeRect(fontX, fontY, fontW, fontH);
-    ctx.setLineDash([]);
+        ctx.strokeStyle = '#EF4444';
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([8, 4]);
+        ctx.strokeRect(rx, ry, rw, rh);
+        ctx.setLineDash([]);
 
-    // === Yellow rectangle for color issue (warning) ===
-    const colorX = w * 0.08;
-    const colorY = h * 0.18;
-    const colorW = w * 0.4;
-    const colorH = h * 0.08;
+        // X mark
+        const xSize = 8;
+        ctx.beginPath();
+        ctx.moveTo(cx - xSize, cy - xSize);
+        ctx.lineTo(cx + xSize, cy + xSize);
+        ctx.moveTo(cx + xSize, cy - xSize);
+        ctx.lineTo(cx - xSize, cy + xSize);
+        ctx.strokeStyle = '#EF4444';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else {
+        // Warning — Yellow rectangle with corner markers
+        const rw = cellW * 0.55;
+        const rh = cellH * 0.3;
+        const rx = cx - rw / 2;
+        const ry = cy - rh / 2;
 
-    ctx.strokeStyle = 'rgba(234, 179, 8, 0.2)';
-    ctx.lineWidth = 6;
-    ctx.strokeRect(colorX - 3, colorY - 3, colorW + 6, colorH + 6);
+        ctx.strokeStyle = 'rgba(234, 179, 8, 0.2)';
+        ctx.lineWidth = 6;
+        ctx.strokeRect(rx - 2, ry - 2, rw + 4, rh + 4);
 
-    ctx.strokeStyle = '#EAB308';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(colorX, colorY, colorW, colorH);
+        ctx.strokeStyle = '#EAB308';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(rx, ry, rw, rh);
 
-    // Corner markers for color box
-    const cornerLen = 10;
-    ctx.strokeStyle = '#EAB308';
-    ctx.lineWidth = 3;
+        // Corner markers
+        const cLen = 10;
+        ctx.strokeStyle = '#EAB308';
+        ctx.lineWidth = 3;
 
-    // Top-left corner
-    ctx.beginPath();
-    ctx.moveTo(colorX, colorY + cornerLen);
-    ctx.lineTo(colorX, colorY);
-    ctx.lineTo(colorX + cornerLen, colorY);
-    ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(rx, ry + cLen);
+        ctx.lineTo(rx, ry);
+        ctx.lineTo(rx + cLen, ry);
+        ctx.stroke();
 
-    // Top-right corner
-    ctx.beginPath();
-    ctx.moveTo(colorX + colorW - cornerLen, colorY);
-    ctx.lineTo(colorX + colorW, colorY);
-    ctx.lineTo(colorX + colorW, colorY + cornerLen);
-    ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(rx + rw - cLen, ry);
+        ctx.lineTo(rx + rw, ry);
+        ctx.lineTo(rx + rw, ry + cLen);
+        ctx.stroke();
 
-    // Bottom-left corner
-    ctx.beginPath();
-    ctx.moveTo(colorX, colorY + colorH - cornerLen);
-    ctx.lineTo(colorX, colorY + colorH);
-    ctx.lineTo(colorX + cornerLen, colorY + colorH);
-    ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(rx, ry + rh - cLen);
+        ctx.lineTo(rx, ry + rh);
+        ctx.lineTo(rx + cLen, ry + rh);
+        ctx.stroke();
 
-    // Bottom-right corner
-    ctx.beginPath();
-    ctx.moveTo(colorX + colorW - cornerLen, colorY + colorH);
-    ctx.lineTo(colorX + colorW, colorY + colorH);
-    ctx.lineTo(colorX + colorW, colorY + colorH - cornerLen);
-    ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(rx + rw - cLen, ry + rh);
+        ctx.lineTo(rx + rw, ry + rh);
+        ctx.lineTo(rx + rw, ry + rh - cLen);
+        ctx.stroke();
+      }
+    });
   }
 
-  // Show AR tooltip, badges etc.
-  function showARElements() {
+  // Show AR tooltip and badges with AI data
+  function showARElements(report) {
+    if (!report || !report.findings) return;
+
+    const findings = report.findings;
+    const issueCount = findings.filter(f => f.status !== 'pass').length;
+
+    // Update issues badge
     setTimeout(() => {
       if (elements.issuesBadge) elements.issuesBadge.classList.add('visible');
+      if (elements.issuesText) {
+        elements.issuesText.textContent = issueCount > 0
+          ? `${issueCount} Issue${issueCount > 1 ? 's' : ''} Found`
+          : 'All Checks Passed!';
+      }
     }, 200);
 
-    setTimeout(() => {
-      if (elements.tooltipFont) elements.tooltipFont.classList.add('visible');
-    }, 600);
+    // Show the first non-pass finding as tooltip
+    const firstIssue = findings.find(f => f.status !== 'pass') || findings[0];
+    if (firstIssue) {
+      setTimeout(() => {
+        if (elements.tooltipFinding) elements.tooltipFinding.classList.add('visible');
+        if (elements.tooltipCategory) elements.tooltipCategory.textContent = firstIssue.category.toUpperCase();
+        if (elements.tooltipText) elements.tooltipText.textContent = firstIssue.description;
+        if (elements.tooltipSuggestion) elements.tooltipSuggestion.textContent = firstIssue.suggestion || '';
+        if (elements.tooltipLabel) {
+          elements.tooltipLabel.className = `tooltip-label ${firstIssue.status === 'fail' ? 'fail' : 'warning'}`;
+          const icon = elements.tooltipLabel.querySelector('.material-symbols-rounded');
+          if (icon) icon.textContent = firstIssue.status === 'fail' ? 'error' : 'warning';
+        }
+      }, 600);
+    }
 
+    // Update match badge
     setTimeout(() => {
       if (elements.matchBadge) elements.matchBadge.classList.add('visible');
+      if (elements.matchBadgeText) elements.matchBadgeText.textContent = `Match: ${report.overallScore}%`;
     }, 1000);
   }
 
@@ -273,7 +324,7 @@ const Scanner = (() => {
       elements.ctx.clearRect(0, 0, elements.canvas.width, elements.canvas.height);
     }
     if (elements.issuesBadge) elements.issuesBadge.classList.remove('visible');
-    if (elements.tooltipFont) elements.tooltipFont.classList.remove('visible');
+    if (elements.tooltipFinding) elements.tooltipFinding.classList.remove('visible');
     if (elements.matchBadge) elements.matchBadge.classList.remove('visible');
     if (elements.scanLine) elements.scanLine.classList.remove('scanning');
     if (elements.analyzingOverlay) elements.analyzingOverlay.classList.remove('visible');
@@ -284,27 +335,25 @@ const Scanner = (() => {
     }
   }
 
-  // Capture current frame for analysis
-  function captureFrame() {
-    if (!elements.canvas || !elements.ctx) return null;
-
-    const viewport = document.getElementById('scan-viewport');
+  // Capture current frame as base64
+  function captureImageBase64() {
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
 
-    if (elements.video && elements.video.srcObject) {
-      tempCanvas.width = elements.video.videoWidth;
-      tempCanvas.height = elements.video.videoHeight;
-      tempCtx.drawImage(elements.video, 0, 0);
-    } else if (elements.uploadedImage && elements.uploadedImage.src) {
+    if (elements.uploadedImage && elements.uploadedImage.src && elements.uploadedImage.style.display !== 'none' && !elements.uploadedImage.src.endsWith('#')) {
       tempCanvas.width = elements.uploadedImage.naturalWidth;
       tempCanvas.height = elements.uploadedImage.naturalHeight;
       tempCtx.drawImage(elements.uploadedImage, 0, 0);
+    } else if (elements.video && elements.video.srcObject) {
+      tempCanvas.width = elements.video.videoWidth;
+      tempCanvas.height = elements.video.videoHeight;
+      tempCtx.drawImage(elements.video, 0, 0);
     } else {
+      console.warn("captureImageBase64: Neither uploadedImage nor video has a source");
       return null;
     }
 
-    return tempCanvas;
+    return tempCanvas.toDataURL('image/jpeg', 0.85);
   }
 
   // Extract dominant colors from an image
@@ -338,8 +387,11 @@ const Scanner = (() => {
     startCamera,
     stopCamera,
     showUploadedImage,
-    startAnalysis,
-    captureFrame,
+    showAnalyzing,
+    hideAnalyzing,
+    drawAROverlays,
+    showARElements,
+    captureImageBase64,
     extractDominantColors,
     hideAROverlays,
     resizeCanvas,

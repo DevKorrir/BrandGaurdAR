@@ -658,10 +658,27 @@
       </div>
       <div class="modal-body">
         <p class="modal-description">
-          BrandGuard AR uses <strong>Google Gemini Vision AI</strong> to analyze brand compliance. Enter your free API key below.
+          BrandGuard AR supports <strong>xAI Grok</strong> and <strong>Google Gemini</strong> for vision AI. Enter one or both keys below.
         </p>
-        <div class="modal-field">
-          <label>Gemini API Key</label>
+        
+        <!-- Grok Key -->
+        <div class="modal-field" style="margin-bottom: 16px;">
+          <label style="display:flex; align-items:center; gap:6px;">
+            <span style="width:10px; height:10px; background:#000000; border-radius:50%; display:inline-block;"></span>
+            xAI Grok API Key
+          </label>
+          <input type="password" class="rule-input" id="input-grok-key" placeholder="xai-...">
+          <small class="modal-hint">
+            Get your key at <a href="https://console.x.ai" target="_blank">console.x.ai</a>
+          </small>
+        </div>
+
+        <!-- Gemini Key -->
+        <div class="modal-field" style="margin-bottom: 16px;">
+          <label style="display:flex; align-items:center; gap:6px;">
+            <span style="width:10px; height:10px; background:#1A73E8; border-radius:50%; display:inline-block;"></span>
+            Gemini API Key
+          </label>
           <input type="password" class="rule-input" id="input-api-key" placeholder="AIza...">
           <small class="modal-hint">
             Get your free key at

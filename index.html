@@ -576,6 +576,10 @@
       <div class="stores-header">
         <h2>Store Locations</h2>
         <div style="display:flex; gap:10px;">
+          <button class="header-btn primary" id="btn-add-store" style="display:none; padding: 8px 16px;">
+            <span class="material-symbols-rounded" style="font-size:16px">add_business</span>
+            Add Location
+          </button>
           <button class="header-btn">
             <span class="material-symbols-rounded" style="font-size:16px">filter_list</span>
             Filter
@@ -678,6 +682,80 @@
         <button class="btn-primary-blue" id="btn-settings-save">
           <span class="material-symbols-rounded" style="font-size:16px">check</span>
           Save & Continue
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==============================
+       EMBED TOOL MODAL
+       ============================== -->
+  <div class="modal-overlay" id="embed-modal" style="display:none">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>
+          <span class="material-symbols-rounded" style="color:var(--blue-600)">code</span>
+          Embed BrandGuard AR
+        </h3>
+        <button class="modal-close" id="btn-embed-close">
+          <span class="material-symbols-rounded">close</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-description">
+          Add the BrandGuard AR scanner directly to your company intranet, wiki, or Notion page by copying the snippet below.
+        </p>
+        <div class="embed-code-container" style="background: var(--bg-section); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+          <textarea class="rule-input rule-textarea" id="embed-code-text" readonly style="font-family: monospace; font-size: 13px; min-height: 80px; margin-bottom: 0; background: transparent; border: none; resize: none;"><iframe src="https://brand-gaurd-ar.vercel.app/" width="100%" height="800px" style="border: none; border-radius: 12px; overflow: hidden;" allow="camera"></iframe></textarea>
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content: flex-end;">
+        <button class="btn-primary-blue" id="btn-copy-embed">
+          <span class="material-symbols-rounded" style="font-size:16px">content_copy</span>
+          Copy Snippet
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==============================
+       ADD STORE MODAL
+       ============================== -->
+  <div class="modal-overlay" id="add-store-modal" style="display:none">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>
+          <span class="material-symbols-rounded" style="color:var(--blue-600)">add_location</span>
+          Add Franchisee Location
+        </h3>
+        <button class="modal-close" id="btn-add-store-close">
+          <span class="material-symbols-rounded">close</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-description" style="margin-bottom: 16px;">
+          Add a specific franchisee or store location. The AI will audit this location and map it.
+        </p>
+        <div class="modal-field" style="margin-bottom: 12px;">
+          <label style="display:block; font-size:13px; font-weight:600; margin-bottom:6px; color:var(--text-secondary);">Store Name</label>
+          <input type="text" class="rule-input" id="input-store-name" placeholder="e.g. Downtown Branch">
+        </div>
+        <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+          <div class="modal-field" style="flex:1">
+            <label style="display:block; font-size:13px; font-weight:600; margin-bottom:6px; color:var(--text-secondary);">Latitude</label>
+            <input type="number" step="any" class="rule-input" id="input-store-lat" placeholder="-1.2864">
+          </div>
+          <div class="modal-field" style="flex:1">
+            <label style="display:block; font-size:13px; font-weight:600; margin-bottom:6px; color:var(--text-secondary);">Longitude</label>
+            <input type="number" step="any" class="rule-input" id="input-store-lng" placeholder="36.8172">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="btn-add-store-cancel">Cancel</button>
+        <button class="btn-primary-blue" id="btn-add-store-save">
+          <span class="material-symbols-rounded" style="font-size:16px">add</span>
+          Save Location
         </button>
       </div>
     </div>

@@ -875,6 +875,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (err) {
         console.error('Scan error:', err);
         Scanner.hideAnalyzing();
+        alert(`An unexpected error occurred during the scan: ${err.message}`);
         btnShutter.disabled = false;
         btnShutter.innerHTML = `
           <span class="material-symbols-rounded" style="font-size:18px">center_focus_strong</span>
@@ -956,7 +957,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function showSettingsModal() {
     if (settingsModal) settingsModal.style.display = 'flex';
-    if (inputApiKey) inputApiKey.value = AIEngine.getApiKey();
+    if (inputApiKey) inputApiKey.value = AIEngine.getGeminiKey();
     updateApiStatus();
   }
 
@@ -980,8 +981,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (btnSettingsSave) {
     btnSettingsSave.addEventListener('click', () => {
-      const key = inputApiKey?.value?.trim() || '';
-      if (key) AIEngine.setApiKey(key);
+      const gKey = inputApiKey?.value?.trim() || '';
+      if (gKey) AIEngine.setApiKey(gKey);
       updateApiStatus();
       hideSettingsModal();
     });

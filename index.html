@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BrandGuard AR — Brand Compliance Scanner | thebrand.ai</title>
-  <meta name="description" content="Scan physical brand assets and get instant compliance reports on logo placement, colors, and fonts. AI-powered brand guardian by thebrand.ai">
+  <title>BrandGuard AR — AI Brand Compliance Scanner | thebrand.ai</title>
+  <meta name="description" content="AI-powered brand compliance scanner. Scan physical assets or upload images to get instant AI analysis of logo, colors, fonts, and design compliance.">
 
   <!-- Styles -->
   <link rel="stylesheet" href="css/style.css">
@@ -22,6 +22,9 @@
        ============================== -->
   <header class="top-header">
     <div class="header-left">
+      <button class="mobile-menu-toggle" id="btn-mobile-menu">
+        <span class="material-symbols-rounded">menu</span>
+      </button>
       <a href="https://www.thebrand.ai" class="header-logo" target="_blank">
         <div class="logo-icon">
           <span class="material-symbols-rounded">shield</span>
@@ -37,10 +40,17 @@
       </div>
     </div>
     <div class="header-right">
-      <a href="#" class="header-btn" id="btn-share-toolkit">
-        <span class="material-symbols-rounded" style="font-size:16px">share</span>
-        Share Toolkit
-      </a>
+      <div class="active-brand-chip" id="active-brand-chip">
+        <span class="brand-dot" id="brand-dot"></span>
+        <span id="brand-chip-name">Safaricom</span>
+      </div>
+      <button class="header-btn" id="btn-theme-toggle" title="Toggle Dark/Light Mode">
+        <span class="material-symbols-rounded" style="font-size:16px" id="theme-icon">dark_mode</span>
+      </button>
+      <button class="header-btn" id="btn-settings-open">
+        <span class="material-symbols-rounded" style="font-size:16px">settings</span>
+        API Settings
+      </button>
       <a href="#" class="header-btn primary" id="btn-embed">
         <span class="material-symbols-rounded" style="font-size:16px">code</span>
         Embed this Tool
@@ -59,6 +69,10 @@
           <span class="material-symbols-rounded">dashboard</span>
           Dashboard
         </button>
+        <button class="sidebar-item" data-screen="rules">
+          <span class="material-symbols-rounded">rule</span>
+          Brand Rules
+        </button>
         <button class="sidebar-item" data-screen="scan">
           <span class="material-symbols-rounded">qr_code_scanner</span>
           Brand Scanner
@@ -66,7 +80,7 @@
         <button class="sidebar-item" data-screen="results">
           <span class="material-symbols-rounded">fact_check</span>
           Compliance Report
-          <span class="badge">3</span>
+          <span class="badge" id="findings-badge" style="display:none">0</span>
         </button>
         <button class="sidebar-item" data-screen="stores">
           <span class="material-symbols-rounded">store</span>
@@ -86,14 +100,6 @@
           <span class="material-symbols-rounded">transform</span>
           Converter
         </button>
-        <button class="sidebar-item" onclick="window.open('https://www.thebrand.ai/wowX/tools/index.php?tool=smart_resizer','_blank')">
-          <span class="material-symbols-rounded">aspect_ratio</span>
-          Smart Resizer
-        </button>
-        <button class="sidebar-item" onclick="window.open('https://www.thebrand.ai/wowX/tools/index.php?tool=qr_generator','_blank')">
-          <span class="material-symbols-rounded">qr_code_2</span>
-          QR Generator
-        </button>
         <button class="sidebar-item" onclick="window.open('https://www.thebrand.ai/wowX/tools/index.php?tool=color_palette','_blank')">
           <span class="material-symbols-rounded">palette</span>
           Color Palette
@@ -105,6 +111,7 @@
   <!-- ==============================
        MAIN CONTENT AREA
        ============================== -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
   <main class="main-content">
 
     <!-- ===== SCREEN 1: DASHBOARD / WELCOME ===== -->
@@ -112,38 +119,28 @@
       <!-- Hero -->
       <div class="welcome-hero">
         <h1>Point. Scan. Perfect.</h1>
-        <p>Ensure brand compliance with AI-powered precision. Scan physical assets or upload images to get instant compliance reports.</p>
+        <p>Ensure brand compliance with AI-powered precision. Scan physical assets or upload images to get instant compliance reports powered by Google Gemini Vision AI.</p>
       </div>
 
-      <!-- Quick Stats -->
+      <!-- Quick Stats (dynamic — updated by JS from scan history) -->
       <div class="stats-row">
         <div class="stat-card">
           <div class="stat-label">Scans Today</div>
-          <div class="stat-value blue">12</div>
-          <div class="stat-change up">
-            <span class="material-symbols-rounded" style="font-size:14px">trending_up</span>
-            +18%
-          </div>
+          <div class="stat-value blue" id="stat-scans-today">0</div>
+          <div class="stat-change" id="stat-scans-trend"></div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Avg. Compliance</div>
-          <div class="stat-value green">87%</div>
-          <div class="stat-change up">
-            <span class="material-symbols-rounded" style="font-size:14px">trending_up</span>
-            +5%
-          </div>
+          <div class="stat-value green" id="stat-avg-compliance">—</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Issues Found</div>
-          <div class="stat-value yellow">24</div>
-          <div class="stat-change down">
-            <span class="material-symbols-rounded" style="font-size:14px">trending_down</span>
-            -12%
-          </div>
+          <div class="stat-value yellow" id="stat-issues-found">0</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">Stores Audited</div>
-          <div class="stat-value blue">8</div>
+          <div class="stat-label">Brands Audited</div>
+          <div class="stat-value blue" id="stat-stores-audited">0</div>
+          <div class="stat-change" id="total-scans-indicator" style="font-size:11px; color:var(--text-muted)"></div>
         </div>
       </div>
 
@@ -176,19 +173,186 @@
         </div>
       </div>
 
+      <!-- Recent Activity -->
+      <div class="dashboard-section">
+        <h3 class="section-title">
+          <span class="material-symbols-rounded" style="color:var(--blue-600)">history</span>
+          Recent Scan Activity
+        </h3>
+        <div class="dashboard-activity" id="dashboard-recent-activity">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
       <!-- Info Bar -->
       <div class="info-bar">
         <div class="info-icon">
           <span class="material-symbols-rounded">lightbulb</span>
         </div>
-        <span><strong>Tip:</strong> Ensure good lighting and hold steady for best scanning results. For photos, use high-resolution images above 1000px.</span>
+        <span><strong>Tip:</strong> Set up your <a href="#" id="link-setup-rules" style="color:var(--blue-600)">Brand Rules</a> first, then scan. The AI will check compliance against your brand's specific colors, fonts, and logo guidelines.</span>
       </div>
 
       <!-- Hidden file input -->
       <input type="file" class="hidden-input" id="file-input" accept="image/*">
     </section>
 
-    <!-- ===== SCREEN 2: BRAND SCANNER ===== -->
+    <!-- ===== SCREEN 2: BRAND RULES ===== -->
+    <section class="screen" id="screen-rules">
+      <div class="rules-header">
+        <h2>
+          <span class="material-symbols-rounded" style="color: var(--blue-600)">rule</span>
+          Brand Rules Configuration
+        </h2>
+        <div class="ai-tag">
+          <span class="material-symbols-rounded" style="font-size:14px">auto_awesome</span>
+          AI will enforce these rules
+        </div>
+      </div>
+
+      <!-- Brand Preset Tabs -->
+      <div class="brand-tabs-wrapper">
+        <div class="brand-tabs" id="brand-tabs-container">
+          <!-- Populated by JS -->
+        </div>
+        <div class="brand-mode-indicator" id="brand-mode-indicator" style="margin-left:auto; margin-right: 12px; display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 4px; background: var(--bg-section); border: 1px solid var(--border);">
+          <span class="material-symbols-rounded" style="font-size:14px">visibility</span>
+          VIEW ONLY
+        </div>
+        <button class="btn-secondary" id="btn-add-brand" style="flex-shrink:0; padding: 6px 12px; height: 32px;">
+          <span class="material-symbols-rounded" style="font-size:16px">add</span>
+          New Brand
+        </button>
+      </div>
+
+      <!-- Rules Content -->
+      <div class="rules-grid">
+        <!-- Brand Identity Card -->
+        <div class="rule-card">
+          <div class="rule-card-header">
+            <span class="material-symbols-rounded">badge</span>
+            Brand Identity
+          </div>
+          <div class="rule-card-body">
+            <div class="rule-row">
+              <label>Brand Name</label>
+              <input type="text" class="rule-input" id="rule-brand-name" value="Safaricom" readonly placeholder="Enter the exact brand name">
+              <small class="rule-helper-text">This will be used to label reports and store locations.</small>
+            </div>
+            <div class="rule-row">
+              <label>Tagline (Optional)</label>
+              <input type="text" class="rule-input" id="rule-tagline" value="The Better Option" readonly placeholder="e.g. Taste the Feeling">
+              <small class="rule-helper-text">AI will look for this text associated with the brand.</small>
+            </div>
+            <div class="rule-row">
+              <label>Logo Description</label>
+              <textarea class="rule-input rule-textarea" id="rule-logo-desc" readonly placeholder="Describe what the authentic logo looks like..."></textarea>
+              <small class="rule-helper-text">Be specific about shapes, icons, and text layout. The AI uses this to find fraudulent or incorrectly printed logos.</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Colors Card -->
+        <div class="rule-card">
+          <div class="rule-card-header">
+            <span class="material-symbols-rounded">palette</span>
+            Brand Colors
+          </div>
+          <div class="rule-card-body">
+            <div class="rule-color-row">
+              <label>Primary</label>
+              <div class="rule-color-preview">
+                <input type="color" class="color-picker-input" id="rule-color-primary-input" value="#4CAF50" disabled>
+                <div class="color-swatch-mini" id="rule-color-primary" style="background:#4CAF50"></div>
+                <span class="color-hex-label" id="rule-color-primary-hex">#4CAF50</span>
+              </div>
+            </div>
+            <div class="rule-color-row">
+              <label>Secondary</label>
+              <div class="rule-color-preview">
+                <input type="color" class="color-picker-input" id="rule-color-secondary-input" value="#E60000" disabled>
+                <div class="color-swatch-mini" id="rule-color-secondary" style="background:#E60000"></div>
+                <span class="color-hex-label" id="rule-color-secondary-hex">#E60000</span>
+              </div>
+            </div>
+            <div class="rule-color-row">
+              <label>Accent</label>
+              <div class="rule-color-preview">
+                <input type="color" class="color-picker-input" id="rule-color-accent-input" value="#FFFFFF" disabled>
+                <div class="color-swatch-mini" id="rule-color-accent" style="background:#FFFFFF; border: 1px solid #E5E7EB"></div>
+                <span class="color-hex-label" id="rule-color-accent-hex">#FFFFFF</span>
+              </div>
+            </div>
+            <div class="rule-prohibited">
+              <span class="prohibited-label" style="display:flex; justify-content:space-between; width:100%;">
+                <span><span class="material-symbols-rounded" style="font-size:14px">block</span> Prohibited:</span>
+              </span>
+              <div class="prohibited-swatches" id="prohibited-swatches"></div>
+              <input type="text" class="rule-input" id="rule-prohibited-input" placeholder="e.g. #000000, #FF0000" style="display:none; margin-top:8px;">
+            </div>
+          </div>
+        </div>
+
+        <!-- Typography Card -->
+        <div class="rule-card">
+          <div class="rule-card-header">
+            <span class="material-symbols-rounded">text_fields</span>
+            Typography
+          </div>
+          <div class="rule-card-body">
+            <div class="rule-row">
+              <label>Heading Font</label>
+              <input type="text" class="rule-input" id="rule-font-heading" value="Safaricom Sans Bold" readonly placeholder="e.g. Arial Bold">
+              <small class="rule-helper-text">The primary font used for titles and headers.</small>
+            </div>
+            <div class="rule-row">
+              <label>Body Font</label>
+              <input type="text" class="rule-input" id="rule-font-body" value="Safaricom Sans Regular" readonly placeholder="e.g. Open Sans">
+              <small class="rule-helper-text">The secondary font used for normal paragraph text.</small>
+            </div>
+            <div class="rule-row">
+              <label>Acceptable Alternates</label>
+              <input type="text" class="rule-input" id="rule-font-alternates" value="Arial, Helvetica Neue, Helvetica" readonly placeholder="Comma separated, e.g. Helvetica, Arial">
+              <small class="rule-helper-text">Fallback fonts that are acceptable if the primary fonts are unavailable.</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Brand Elements Card -->
+        <div class="rule-card full-width">
+          <div class="rule-card-header">
+            <span class="material-symbols-rounded">checklist</span>
+            Brand Compliance Rules
+          </div>
+          <div class="rule-card-body">
+            <p class="rule-helper-text" style="margin-bottom: 12px; margin-top: 0;">Provide highly specific 'must-have' rules. The AI will strictly enforce these during a scan.</p>
+            <ul class="brand-rules-list" id="brand-rules-list">
+              <!-- Populated by JS -->
+            </ul>
+            <textarea class="rule-input rule-textarea" id="rule-elements-input" placeholder="Enter rules separated by newlines..." style="display:none; min-height:100px; margin-top: 8px;"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="rules-actions" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+        <div class="custom-brand-actions" id="custom-brand-actions" style="display:none; gap: 8px;">
+          <button class="btn-primary" id="btn-save-brand" style="background: var(--green-600);">
+            <span class="material-symbols-rounded" style="font-size:18px">save</span>
+            Save Brand
+          </button>
+          <button class="btn-secondary" id="btn-delete-brand" style="color: var(--red-600); border-color: var(--red-200); background: var(--red-50);">
+            <span class="material-symbols-rounded" style="font-size:18px">delete</span>
+            Delete
+          </button>
+        </div>
+        <button class="btn-primary-blue" id="btn-start-scan-rules" style="margin-left: auto;">
+          <span class="material-symbols-rounded" style="font-size:18px">qr_code_scanner</span>
+          Start Scan with These Rules
+        </button>
+      </div>
+    </section>
+
+    <!-- ===== SCREEN 3: BRAND SCANNER ===== -->
     <section class="screen" id="screen-scan">
       <div class="scan-layout">
         <!-- Scanner Viewport -->
@@ -197,8 +361,18 @@
             <div class="viewport-title">
               <span class="material-symbols-rounded">videocam</span>
               Live Scanner
+              <span class="ai-chip">
+                <span class="material-symbols-rounded" style="font-size:12px">auto_awesome</span>
+                AI
+              </span>
             </div>
-            <div style="display:flex; gap:8px;">
+            <div style="display:flex; gap:8px; align-items: center;">
+              <!-- Brand Quick Selector -->
+              <select class="brand-quick-select" id="brand-quick-select">
+                <option value="safaricom">🟢 Safaricom</option>
+                <option value="cocacola">🔴 Coca-Cola</option>
+                <option value="custom">🔵 Custom</option>
+              </select>
               <button class="scan-control-btn" id="btn-upload-in-scan">
                 <span class="material-symbols-rounded" style="font-size:16px">file_upload</span>
                 Upload
@@ -230,29 +404,29 @@
             <!-- Analyzing overlay -->
             <div class="analyzing-overlay" id="analyzing-overlay">
               <div class="analyzing-spinner"></div>
-              <span class="analyzing-text">Analyzing brand assets...</span>
+              <span class="analyzing-text" id="analyzing-text">Analyzing brand assets with AI...</span>
             </div>
 
             <!-- Issues Badge -->
             <div class="issues-badge" id="scan-issues-badge">
               <span class="dot"></span>
-              <span id="scan-issues-text">2 Issues Found</span>
+              <span id="scan-issues-text">Analyzing...</span>
             </div>
 
-            <!-- AR Tooltip: Font Mismatch -->
-            <div class="ar-tooltip" id="tooltip-font" style="top: 36%; right: 6%;">
-              <div class="tooltip-label warning">
+            <!-- AR Tooltip: Dynamic (will be updated by AI) -->
+            <div class="ar-tooltip" id="tooltip-finding" style="top: 36%; right: 6%;">
+              <div class="tooltip-label warning" id="tooltip-finding-label">
                 <span class="material-symbols-rounded" style="font-size:14px">warning</span>
-                FONT MISMATCH
+                <span id="tooltip-finding-category">ANALYZING</span>
               </div>
-              <div class="tooltip-text">Detected: <strong>Arial</strong></div>
-              <div class="tooltip-suggestion">Suggestion: Brand Sans</div>
+              <div class="tooltip-text" id="tooltip-finding-text">Waiting for AI results...</div>
+              <div class="tooltip-suggestion" id="tooltip-finding-suggestion"></div>
             </div>
 
             <!-- Match Badge -->
             <div class="match-badge" id="match-badge" style="bottom: 40px; left: 20px;">
               <span class="badge-dot"></span>
-              Match: 85%
+              <span id="match-badge-text">Match: —%</span>
             </div>
           </div>
 
@@ -266,49 +440,22 @@
               <span class="material-symbols-rounded" style="font-size:18px">center_focus_strong</span>
               Capture & Analyze
             </button>
-            <button class="scan-control-btn" id="btn-settings">
+            <button class="scan-control-btn" id="btn-scan-settings">
               <span class="material-symbols-rounded" style="font-size:16px">tune</span>
               Settings
             </button>
           </div>
         </div>
 
-        <!-- Sidebar: Brand Guidelines -->
+        <!-- Sidebar: Brand Guidelines (dynamic) -->
         <div class="scan-sidebar">
           <div class="scan-panel">
             <h3>
               <span class="material-symbols-rounded">palette</span>
-              Brand Guidelines
+              <span id="guidelines-brand-name">Safaricom</span> Guidelines
             </h3>
-            <div class="guideline-item">
-              <span class="gl-label">Primary Color</span>
-              <span class="gl-value">
-                <span class="color-dot" style="background:#FF0000"></span>
-                #FF0000
-              </span>
-            </div>
-            <div class="guideline-item">
-              <span class="gl-label">Secondary Color</span>
-              <span class="gl-value">
-                <span class="color-dot" style="background:#1A1A2E"></span>
-                #1A1A2E
-              </span>
-            </div>
-            <div class="guideline-item">
-              <span class="gl-label">Heading Font</span>
-              <span class="gl-value">Brand Sans</span>
-            </div>
-            <div class="guideline-item">
-              <span class="gl-label">Body Font</span>
-              <span class="gl-value">Brand Sans</span>
-            </div>
-            <div class="guideline-item">
-              <span class="gl-label">Logo Min Size</span>
-              <span class="gl-value">24px</span>
-            </div>
-            <div class="guideline-item">
-              <span class="gl-label">Clear Space</span>
-              <span class="gl-value">2× Logo Width</span>
+            <div id="guidelines-panel-content">
+              <!-- Populated dynamically by JS -->
             </div>
           </div>
 
@@ -317,17 +464,11 @@
               <span class="material-symbols-rounded">history</span>
               Recent Scans
             </h3>
-            <div class="guideline-item">
-              <span class="gl-label">Downtown Seattle</span>
-              <span class="gl-value" style="color:var(--green-600)">96%</span>
-            </div>
-            <div class="guideline-item">
-              <span class="gl-label">Bellevue Mall</span>
-              <span class="gl-value" style="color:var(--yellow-600)">74%</span>
-            </div>
-            <div class="guideline-item">
-              <span class="gl-label">Pike Place</span>
-              <span class="gl-value" style="color:var(--green-600)">92%</span>
+            <div id="recent-scans-panel">
+              <div class="guideline-item">
+                <span class="gl-label">No scans yet</span>
+                <span class="gl-value" style="color:var(--text-muted)">—</span>
+              </div>
             </div>
           </div>
         </div>
@@ -337,18 +478,22 @@
       <input type="file" class="hidden-input" id="file-input-scan" accept="image/*">
     </section>
 
-    <!-- ===== SCREEN 3: COMPLIANCE REPORT ===== -->
+    <!-- ===== SCREEN 4: COMPLIANCE REPORT ===== -->
     <section class="screen" id="screen-results">
       <!-- Header -->
       <div class="results-header">
         <h2>
           Compliance Report
-          <div class="scan-completed-badge">
+          <div class="scan-completed-badge" id="report-status-badge">
             <span class="dot"></span>
-            SCAN COMPLETED
+            <span id="report-status-text">SCAN COMPLETED</span>
           </div>
         </h2>
         <div class="results-actions-top">
+          <span class="ai-tag" id="ai-powered-tag" style="display:none">
+            <span class="material-symbols-rounded" style="font-size:14px">auto_awesome</span>
+            AI-Powered Analysis
+          </span>
           <button class="btn-secondary" id="btn-scan-again">
             <span class="material-symbols-rounded" style="font-size:18px">qr_code_scanner</span>
             New Scan
@@ -356,100 +501,60 @@
         </div>
       </div>
 
+      <!-- Brand & Score Overview -->
+      <div class="report-overview" id="report-overview">
+        <div class="overview-score">
+          <div class="score-ring" id="score-ring">
+            <svg viewBox="0 0 120 120">
+              <circle class="score-ring-bg" cx="60" cy="60" r="52" />
+              <circle class="score-ring-fill" id="score-ring-fill" cx="60" cy="60" r="52" />
+            </svg>
+            <div class="score-value" id="score-value">—</div>
+          </div>
+          <div class="score-label">Overall Score</div>
+        </div>
+        <div class="overview-info">
+          <div class="overview-brand">
+            <span class="overview-brand-label">Brand Detected:</span>
+            <span class="overview-brand-name" id="detected-brand-name">—</span>
+          </div>
+          <div class="overview-brand">
+            <span class="overview-brand-label">Checking Against:</span>
+            <span class="overview-brand-name" id="checking-brand-name">—</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Summary Stats -->
       <div class="issues-summary-row">
         <div class="summary-stat">
-          <div class="stat-number green">1</div>
+          <div class="stat-number green" id="count-passed">0</div>
           <div class="stat-label">Passed</div>
         </div>
         <div class="summary-stat">
-          <div class="stat-number yellow">1</div>
+          <div class="stat-number yellow" id="count-warnings">0</div>
           <div class="stat-label">Warnings</div>
         </div>
         <div class="summary-stat">
-          <div class="stat-number red" id="total-issues">1</div>
+          <div class="stat-number red" id="count-failed">0</div>
           <div class="stat-label">Failed</div>
         </div>
       </div>
 
-      <!-- Compliance Cards -->
+      <!-- Extracted Colors -->
+      <div class="extracted-colors-section" id="extracted-colors-section" style="display:none">
+        <h3 class="section-title" style="margin-bottom:12px">
+          <span class="material-symbols-rounded" style="color:var(--blue-600)">palette</span>
+          Colors Detected in Image
+        </h3>
+        <div class="extracted-colors-grid" id="extracted-colors-grid">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Compliance Cards (dynamically rendered) -->
       <div class="compliance-cards" id="compliance-cards">
-        <!-- Card 1: Logo Placement — PASS -->
-        <div class="compliance-card">
-          <div class="card-header">
-            <div class="card-title-group">
-              <div class="status-icon pass">
-                <span class="material-symbols-rounded">check</span>
-              </div>
-              <span class="card-title">Logo Placement</span>
-            </div>
-            <span class="status-badge pass">PASS</span>
-          </div>
-          <div class="card-body">
-            <p class="card-description">Correct. Clear space rules respected on all sides.</p>
-            <a href="#" class="view-guidelines">
-              View Guidelines
-              <span class="material-symbols-rounded" style="font-size:14px">chevron_right</span>
-            </a>
-          </div>
-        </div>
-
-        <!-- Card 2: Color Mismatch — WARNING -->
-        <div class="compliance-card">
-          <div class="card-header">
-            <div class="card-title-group">
-              <div class="status-icon warning">
-                <span class="material-symbols-rounded">warning</span>
-              </div>
-              <span class="card-title">Color Mismatch</span>
-            </div>
-            <span class="status-badge warning">WARNING</span>
-          </div>
-          <div class="card-body">
-            <p class="card-description">Menu Header Red deviates from brand guidelines.</p>
-            <div class="color-swatches">
-              <div class="color-swatch">
-                <div class="swatch-circle" id="swatch-found" style="background: #E33333;"></div>
-                <div class="swatch-info">
-                  <div class="swatch-label">Found</div>
-                  <div class="swatch-hex" id="hex-found">#E33333</div>
-                </div>
-              </div>
-              <span class="color-arrow">→</span>
-              <div class="color-swatch">
-                <div class="swatch-circle" id="swatch-target" style="background: #FF0000;"></div>
-                <div class="swatch-info">
-                  <div class="swatch-label">Target</div>
-                  <div class="swatch-hex" id="hex-target">#FF0000</div>
-                </div>
-              </div>
-            </div>
-            <a href="#" class="view-guidelines">
-              View Guidelines
-              <span class="material-symbols-rounded" style="font-size:14px">chevron_right</span>
-            </a>
-          </div>
-        </div>
-
-        <!-- Card 3: Font Usage — FAIL -->
-        <div class="compliance-card">
-          <div class="card-header">
-            <div class="card-title-group">
-              <div class="status-icon fail">
-                <span class="material-symbols-rounded">close</span>
-              </div>
-              <span class="card-title">Font Usage</span>
-            </div>
-            <span class="status-badge fail">FAIL</span>
-          </div>
-          <div class="card-body">
-            <p class="card-description">Body text uses <strong>Arial</strong> instead of <strong>Brand Sans</strong>.</p>
-            <a href="#" class="view-guidelines">
-              View Guidelines
-              <span class="material-symbols-rounded" style="font-size:14px">chevron_right</span>
-            </a>
-          </div>
-        </div>
+        <!-- Cards rendered by JS -->
       </div>
 
       <!-- Actions -->
@@ -465,7 +570,7 @@
       </div>
     </section>
 
-    <!-- ===== SCREEN 4: STORE LOCATIONS ===== -->
+    <!-- ===== SCREEN 5: STORE LOCATIONS (Dynamic) ===== -->
     <section class="screen" id="screen-stores">
       <!-- Header -->
       <div class="stores-header">
@@ -482,82 +587,13 @@
         </div>
       </div>
 
-      <!-- Store Grid -->
+      <!-- Store Grid (dynamically populated) -->
       <div class="stores-grid" id="stores-list">
-        <!-- Store 1 -->
-        <div class="store-card" data-store="downtown">
-          <div class="store-thumbnail" style="background: var(--blue-100); color: var(--blue-600);">
-            <span class="material-symbols-rounded">storefront</span>
-          </div>
-          <div class="store-info">
-            <div class="store-name">Downtown Seattle #402</div>
-            <div class="store-date">Oct 12 · 2:30 PM</div>
-          </div>
-          <div class="store-meta">
-            <span class="compliance-pill high">96% Compliant</span>
-            <span class="verified-badge">
-              <span class="material-symbols-rounded" style="font-size:14px">verified</span>
-              VERIFIED
-            </span>
-          </div>
-          <span class="material-symbols-rounded store-chevron">chevron_right</span>
-        </div>
-
-        <!-- Store 2 -->
-        <div class="store-card" data-store="bellevue">
-          <div class="store-thumbnail" style="background: var(--yellow-100); color: var(--yellow-600);">
-            <span class="material-symbols-rounded">local_cafe</span>
-          </div>
-          <div class="store-info">
-            <div class="store-name">Bellevue Mall Kiosk</div>
-            <div class="store-date">Oct 11 · 4:15 PM</div>
-          </div>
-          <div class="store-meta">
-            <span class="compliance-pill medium">74% Compliant</span>
-          </div>
-          <span class="material-symbols-rounded store-chevron">chevron_right</span>
-        </div>
-
-        <!-- Store 3 -->
-        <div class="store-card" data-store="pike">
-          <div class="store-thumbnail" style="background: var(--green-100); color: var(--green-600);">
-            <span class="material-symbols-rounded">store</span>
-          </div>
-          <div class="store-info">
-            <div class="store-name">Pike Place Flagship</div>
-            <div class="store-date">Oct 10 · 10:00 AM</div>
-          </div>
-          <div class="store-meta">
-            <span class="compliance-pill high">92% Compliant</span>
-            <span class="verified-badge">
-              <span class="material-symbols-rounded" style="font-size:14px">verified</span>
-              VERIFIED
-            </span>
-          </div>
-          <span class="material-symbols-rounded store-chevron">chevron_right</span>
-        </div>
-
-        <!-- Store 4 -->
-        <div class="store-card" data-store="westlake">
-          <div class="store-thumbnail" style="background: var(--blue-100); color: var(--blue-600);">
-            <span class="material-symbols-rounded">apartment</span>
-          </div>
-          <div class="store-info">
-            <div class="store-name">Westlake Center</div>
-            <div class="store-date">Today · 11:45 AM</div>
-          </div>
-          <div class="store-meta">
-            <span class="analyzing-badge">
-              <span class="material-symbols-rounded" style="font-size:14px; animation: spin 1s linear infinite;">sync</span>
-              Analyzing...
-            </span>
-          </div>
-          <span class="material-symbols-rounded store-chevron">chevron_right</span>
-        </div>
+        <!-- Populated by JS from brand config -->
       </div>
     </section>
 
-    <!-- ===== SCREEN 5: AUDIT HISTORY & MAP ===== -->
+    <!-- ===== SCREEN 6: AUDIT HISTORY & MAP ===== -->
     <section class="screen" id="screen-history">
       <!-- Header -->
       <div class="history-header">
@@ -565,7 +601,7 @@
         <div style="display:flex; gap:10px;">
           <button class="header-btn">
             <span class="material-symbols-rounded" style="font-size:16px">date_range</span>
-            Q3 2024
+            Q1 2026
           </button>
           <button class="header-btn">
             <span class="material-symbols-rounded" style="font-size:16px">download</span>
@@ -575,8 +611,8 @@
       </div>
 
       <div class="history-subtitle">
-        <span class="company-dot"></span>
-        Coffee Chain Inc. — Q3 Store Audits
+        <span class="company-dot" id="history-company-dot"></span>
+        <span id="history-company-name">Safaricom — Store Audits</span>
       </div>
 
       <div class="history-layout">
@@ -597,61 +633,8 @@
             <span class="material-symbols-rounded">format_list_bulleted</span>
             Recent Audits
           </div>
-          <div class="audit-list">
-            <div class="audit-item">
-              <div class="audit-pin pass">
-                <span class="material-symbols-rounded">location_on</span>
-              </div>
-              <div class="audit-details">
-                <div class="audit-name">Downtown Seattle #402</div>
-                <div class="audit-date">Oct 12, 2024 · 2:30 PM</div>
-              </div>
-              <span class="audit-score high">96%</span>
-            </div>
-
-            <div class="audit-item">
-              <div class="audit-pin warning">
-                <span class="material-symbols-rounded">location_on</span>
-              </div>
-              <div class="audit-details">
-                <div class="audit-name">Bellevue Mall Kiosk</div>
-                <div class="audit-date">Oct 11, 2024 · 4:15 PM</div>
-              </div>
-              <span class="audit-score medium">74%</span>
-            </div>
-
-            <div class="audit-item">
-              <div class="audit-pin pass">
-                <span class="material-symbols-rounded">location_on</span>
-              </div>
-              <div class="audit-details">
-                <div class="audit-name">Pike Place Flagship</div>
-                <div class="audit-date">Oct 10, 2024 · 10:00 AM</div>
-              </div>
-              <span class="audit-score high">92%</span>
-            </div>
-
-            <div class="audit-item">
-              <div class="audit-pin pass">
-                <span class="material-symbols-rounded">location_on</span>
-              </div>
-              <div class="audit-details">
-                <div class="audit-name">Capitol Hill Branch</div>
-                <div class="audit-date">Oct 9, 2024 · 1:00 PM</div>
-              </div>
-              <span class="audit-score high">89%</span>
-            </div>
-
-            <div class="audit-item">
-              <div class="audit-pin pass">
-                <span class="material-symbols-rounded">location_on</span>
-              </div>
-              <div class="audit-details">
-                <div class="audit-name">University District</div>
-                <div class="audit-date">Oct 8, 2024 · 3:45 PM</div>
-              </div>
-              <span class="audit-score high">91%</span>
-            </div>
+          <div class="audit-list" id="audit-list">
+            <!-- Populated by JS -->
           </div>
         </div>
       </div>
@@ -659,10 +642,54 @@
 
   </main>
 
+  <!-- ==============================
+       API KEY SETTINGS MODAL
+       ============================== -->
+  <div class="modal-overlay" id="settings-modal" style="display:none">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>
+          <span class="material-symbols-rounded" style="color:var(--blue-600)">settings</span>
+          API Settings
+        </h3>
+        <button class="modal-close" id="btn-settings-close">
+          <span class="material-symbols-rounded">close</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-description">
+          BrandGuard AR uses <strong>Google Gemini Vision AI</strong> to analyze brand compliance. Enter your free API key below.
+        </p>
+        <div class="modal-field">
+          <label>Gemini API Key</label>
+          <input type="password" class="rule-input" id="input-api-key" placeholder="AIza...">
+          <small class="modal-hint">
+            Get your free key at
+            <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a>
+          </small>
+        </div>
+        <div class="api-status" id="api-status">
+          <span class="material-symbols-rounded" style="font-size:16px">info</span>
+          <span id="api-status-text">No API key set — demo mode active</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="btn-settings-cancel">Cancel</button>
+        <button class="btn-primary-blue" id="btn-settings-save">
+          <span class="material-symbols-rounded" style="font-size:16px">check</span>
+          Save & Continue
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Leaflet JS (for map) -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- App Scripts -->
+  <!-- App Scripts (order matters) -->
+  <script src="js/brands.js"></script>
+  <script src="js/ai-engine.js"></script>
+  <script src="js/scan-history.js"></script>
   <script src="js/scanner.js"></script>
   <script src="js/report.js"></script>
   <script src="js/app.js"></script>

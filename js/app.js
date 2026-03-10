@@ -492,6 +492,13 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateStoresScreen() {
     const rules = BrandConfig.getActiveRules();
     const container = document.getElementById('stores-list');
+    const btnAddStore = document.getElementById('btn-add-store');
+    
+    // Show Add Store button only for custom brands
+    if (btnAddStore) {
+      btnAddStore.style.display = rules.isPreset ? 'none' : 'flex';
+    }
+
     if (!container) return;
 
     const stores = rules.stores || [];
@@ -517,7 +524,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="store-info">
           <div class="store-name">${store.name}</div>
-          <div class="store-date">Mar 8 · 2:30 PM</div>
+          <div class="store-date">Lat: ${store.lat.toFixed(4)} · Lng: ${store.lng.toFixed(4)}</div>
         </div>
         <div class="store-meta">
           ${store.score > 0
@@ -526,9 +533,9 @@ document.addEventListener('DOMContentLoaded', () => {
                  <span class="material-symbols-rounded" style="font-size:14px">verified</span>
                  VERIFIED
                </span>` : ''}`
-            : `<span class="analyzing-badge">
-                 <span class="material-symbols-rounded" style="font-size:14px; animation: spin 1s linear infinite;">sync</span>
-                 Analyzing...
+            : `<span class="analyzing-badge" style="color:var(--blue-600); background:var(--blue-50);">
+                 <span class="material-symbols-rounded" style="font-size:14px;">pending</span>
+                 Pending Audit
                </span>`
           }
         </div>
@@ -676,42 +683,61 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnSaveBrand = document.getElementById('btn-save-brand');
   if (btnSaveBrand) {
     btnSaveBrand.addEventListener('click', () => {
-      const activeId = BrandConfig.getActiveBrand();
-      const name = document.getElementById('rule-brand-name')?.value || 'Unnamed Brand';
-      const tagline = document.getElementById('rule-tagline')?.value || '';
-      const logoDesc = document.getElementById('rule-logo-desc')?.value || '';
-      const fontHeading = document.getElementById('rule-font-heading')?.value || '';
-      const fontBody = document.getElementById('rule-font-body')?.value || '';
-      
-      const altsRaw = document.getElementById('rule-font-alternates')?.value || '';
-      const alternates = altsRaw.split(',').map(s => s.trim()).filter(Boolean);
+      const originalWidth = btnSaveBrand.offsetWidth;
+      btnSaveBrand.style.width = originalWidth + 'px'; // Lock width to prevent jump
+      btnSaveBrand.classList.add('is-loading');
 
-      const primary = document.getElementById('rule-color-primary-input')?.value || '#000000';
-      const secondary = document.getElementById('rule-color-secondary-input')?.value || '#000000';
-      const accent = document.getElementById('rule-color-accent-input')?.value || '#ffffff';
-
-      const prohibRaw = document.getElementById('rule-prohibited-input')?.value || '';
-      const prohibitedColors = prohibRaw.split(',').map(s => s.trim()).filter(Boolean);
-
-      const elementsRaw = document.getElementById('rule-elements-input')?.value || '';
-      const brandElements = elementsRaw.split('\n').map(s => s.trim()).filter(Boolean);
-
-      BrandConfig.saveCustomBrand({
-        id: activeId,
-        name,
-        tagline,
-        logo: { description: logoDesc, minClearSpace: '1x logo height', mustBeVisible: true, acceptableBackgrounds: ['any'] },
-        colors: { primary, secondary, accent, background: '#FFFFFF', text: '#333333' },
-        fonts: { heading: fontHeading, body: fontBody, alternates },
-        prohibitedColors,
-        brandElements,
-        stores: []
-      });
-      updateBrandUI();
-      btnSaveBrand.innerHTML = `<span class="material-symbols-rounded" style="font-size:18px">check</span> Saved!`;
+      // Add a slight artificial delay for the "smart" feel
       setTimeout(() => {
-        btnSaveBrand.innerHTML = `<span class="material-symbols-rounded" style="font-size:18px">save</span> Save Brand`;
-      }, 2000);
+        const activeId = BrandConfig.getActiveBrand();
+        const name = document.getElementById('rule-brand-name')?.value || 'Unnamed Brand';
+        const tagline = document.getElementById('rule-tagline')?.value || '';
+        const logoDesc = document.getElementById('rule-logo-desc')?.value || '';
+        const fontHeading = document.getElementById('rule-font-heading')?.value || '';
+        const fontBody = document.getElementById('rule-font-body')?.value || '';
+        
+        const altsRaw = document.getElementById('rule-font-alternates')?.value || '';
+        const alternates = altsRaw.split(',').map(s => s.trim()).filter(Boolean);
+
+        const primary = document.getElementById('rule-color-primary-input')?.value || '#000000';
+        const secondary = document.getElementById('rule-color-secondary-input')?.value || '#000000';
+        const accent = document.getElementById('rule-color-accent-input')?.value || '#ffffff';
+
+        const prohibRaw = document.getElementById('rule-prohibited-input')?.value || '';
+        const prohibitedColors = prohibRaw.split(',').map(s => s.trim()).filter(Boolean);
+
+        const elementsRaw = document.getElementById('rule-elements-input')?.value || '';
+        const brandElements = elementsRaw.split('\n').map(s => s.trim()).filter(Boolean);
+
+        BrandConfig.saveCustomBrand({
+          id: activeId,
+          name,
+          tagline,
+          logo: { description: logoDesc, minClearSpace: '1x logo height', mustBeVisible: true, acceptableBackgrounds: ['any'] },
+          colors: { primary, secondary, accent, background: '#FFFFFF', text: '#333333' },
+          fonts: { heading: fontHeading, body: fontBody, alternates },
+          prohibitedColors,
+          brandElements,
+          stores: []
+        });
+
+        updateBrandUI();
+
+        // Transition from loading to success
+        btnSaveBrand.classList.remove('is-loading');
+        btnSaveBrand.classList.add('is-success');
+        const originalHtml = btnSaveBrand.innerHTML;
+        
+        btnSaveBrand.innerHTML = `<span class="material-symbols-rounded" style="font-size:18px">check</span> Saved!`;
+        
+        // Revert back
+        setTimeout(() => {
+          btnSaveBrand.classList.remove('is-success');
+          btnSaveBrand.innerHTML = originalHtml;
+          btnSaveBrand.style.width = '';
+        }, 1500);
+
+      }, 600); // 600ms loading spin
     });
   }
 
@@ -875,6 +901,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (err) {
         console.error('Scan error:', err);
         Scanner.hideAnalyzing();
+        alert(`An unexpected error occurred during the scan: ${err.message}`);
         btnShutter.disabled = false;
         btnShutter.innerHTML = `
           <span class="material-symbols-rounded" style="font-size:18px">center_focus_strong</span>
@@ -956,7 +983,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function showSettingsModal() {
     if (settingsModal) settingsModal.style.display = 'flex';
-    if (inputApiKey) inputApiKey.value = AIEngine.getApiKey();
+    if (inputApiKey) inputApiKey.value = AIEngine.getGeminiKey();
     updateApiStatus();
   }
 
@@ -980,18 +1007,129 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (btnSettingsSave) {
     btnSettingsSave.addEventListener('click', () => {
-      const key = inputApiKey?.value?.trim() || '';
-      if (key) AIEngine.setApiKey(key);
+      const gKey = inputApiKey?.value?.trim() || '';
+      if (gKey) AIEngine.setApiKey(gKey);
       updateApiStatus();
       hideSettingsModal();
     });
   }
 
-  if (settingsModal) {
-    settingsModal.addEventListener('click', (e) => {
-      if (e.target === settingsModal) hideSettingsModal();
+  // ============================================
+  //  EMBED TOOL MODAL
+  // ============================================
+
+  const btnEmbedOpen = document.getElementById('btn-embed');
+  const embedModal = document.getElementById('embed-modal');
+  const btnEmbedClose = document.getElementById('btn-embed-close');
+  const btnCopyEmbed = document.getElementById('btn-copy-embed');
+  const embedCodeText = document.getElementById('embed-code-text');
+
+  function openEmbedModal() {
+    if (embedModal) embedModal.style.display = 'flex';
+  }
+
+  function closeEmbedModal() {
+    if (embedModal) embedModal.style.display = 'none';
+  }
+
+  if (btnEmbedOpen) {
+    btnEmbedOpen.addEventListener('click', (e) => {
+      e.preventDefault();
+      openEmbedModal();
     });
   }
+  if (btnEmbedClose) btnEmbedClose.addEventListener('click', closeEmbedModal);
+
+  if (btnCopyEmbed && embedCodeText) {
+    btnCopyEmbed.addEventListener('click', () => {
+      embedCodeText.select();
+      embedCodeText.setSelectionRange(0, 99999); // For mobile devices
+      
+      try {
+        navigator.clipboard.writeText(embedCodeText.value).then(() => {
+          const originalHTML = btnCopyEmbed.innerHTML;
+          btnCopyEmbed.innerHTML = `<span class="material-symbols-rounded" style="font-size:16px">check</span> Copied!`;
+          btnCopyEmbed.style.background = 'var(--green-600)';
+          
+          setTimeout(() => {
+            btnCopyEmbed.innerHTML = originalHTML;
+            btnCopyEmbed.style.background = '';
+          }, 2000);
+        });
+      } catch (err) {
+        console.error('Failed to copy text: ', err);
+      }
+    });
+  }
+
+  // ============================================
+  //  ADD STORE MODAL
+  // ============================================
+
+  const btnAddStore = document.getElementById('btn-add-store');
+  const addStoreModal = document.getElementById('add-store-modal');
+  const btnAddStoreClose = document.getElementById('btn-add-store-close');
+  const btnAddStoreCancel = document.getElementById('btn-add-store-cancel');
+  const btnAddStoreSave = document.getElementById('btn-add-store-save');
+
+  function openAddStoreModal() {
+    if (addStoreModal) addStoreModal.style.display = 'flex';
+  }
+
+  function closeAddStoreModal() {
+    if (addStoreModal) addStoreModal.style.display = 'none';
+    document.getElementById('input-store-name').value = '';
+    document.getElementById('input-store-lat').value = '';
+    document.getElementById('input-store-lng').value = '';
+  }
+
+  if (btnAddStore) btnAddStore.addEventListener('click', openAddStoreModal);
+  if (btnAddStoreClose) btnAddStoreClose.addEventListener('click', closeAddStoreModal);
+  if (btnAddStoreCancel) btnAddStoreCancel.addEventListener('click', closeAddStoreModal);
+
+  if (btnAddStoreSave) {
+    btnAddStoreSave.addEventListener('click', () => {
+      const name = document.getElementById('input-store-name').value.trim();
+      const lat = parseFloat(document.getElementById('input-store-lat').value);
+      const lng = parseFloat(document.getElementById('input-store-lng').value);
+
+      if (!name || isNaN(lat) || isNaN(lng)) {
+        alert('Please provide a valid store name and coordinates.');
+        return;
+      }
+
+      // Add to current brand rules
+      const activeRules = BrandConfig.getActiveRules();
+      if (!activeRules.isPreset) {
+        if (!activeRules.stores) activeRules.stores = [];
+        
+        activeRules.stores.push({
+          name: name,
+          lat: lat,
+          lng: lng,
+          score: 0,
+          color: activeRules.colors.primary || '#4361EE'
+        });
+
+        // Save back to local storage
+        BrandConfig.saveCustomBrand(activeRules);
+        
+        // Refresh UI
+        updateStoresScreen();
+        mapInitialized = false; // Force map redraw next time
+        if (currentScreen === 'history') initMap();
+      }
+
+      closeAddStoreModal();
+    });
+  }
+
+  // Close modals on outside click
+  window.addEventListener('click', (e) => {
+    if (e.target === settingsModal) hideSettingsModal();
+    if (e.target === embedModal) closeEmbedModal();
+    if (e.target === addStoreModal) closeAddStoreModal();
+  });
 
   // ============================================
   //  MAP INITIALIZATION (dynamic from brand)

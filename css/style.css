@@ -1216,6 +1216,35 @@ body {
   color: var(--blue-600);
 }
 
+/* "Smart" Save Button States */
+.btn-primary.is-loading {
+  background: var(--text-muted) !important;
+  color: transparent !important;
+  position: relative;
+  pointer-events: none;
+}
+
+.btn-primary.is-loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  margin-top: -9px;
+  margin-left: -9px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+.btn-primary.is-success {
+  background: var(--green-600) !important;
+  color: white !important;
+  pointer-events: none;
+}
+
 /* ============================================
    SCREEN 4: STORE LOCATIONS
    ============================================ */

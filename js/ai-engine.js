@@ -1,39 +1,42 @@
 /* ============================================
    BrandGuard AR — AI Engine Module
-   Google Gemini Vision API integration
+   Gemini Vision API
    ============================================ */
 
 const AIEngine = (() => {
-  const API_KEY_STORAGE = 'brandguard_gemini_key';
-  const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+  const GEMINI_KEY_STORAGE = 'brandguard_gemini_key';
+
+  const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
   // ---- API Key Management ----
 
   function setApiKey(key) {
-    localStorage.setItem(API_KEY_STORAGE, key.trim());
+    key = key.trim();
+    localStorage.setItem(GEMINI_KEY_STORAGE, key);
   }
 
   function getApiKey() {
-    return localStorage.getItem(API_KEY_STORAGE) || '';
+    return localStorage.getItem(GEMINI_KEY_STORAGE) || '';
+  }
+
+  function getGeminiKey() {
+    return localStorage.getItem(GEMINI_KEY_STORAGE) || '';
   }
 
   function hasApiKey() {
-    return getApiKey().length > 0;
+    return getGeminiKey().length > 0;
   }
 
-  // ---- Core Analysis ----
+  function getActiveProvider() {
+    if (getGeminiKey()) return 'gemini';
+    return 'demo';
+  }
 
-  async function analyzeImage(imageBase64, brandRules) {
-    const apiKey = getApiKey();
+  // ---- Prompt Builder ----
 
-    if (!apiKey) {
-      console.warn('No Gemini API key set — returning demo findings.');
-      return getDemoFindings(brandRules);
-    }
-
+  function buildPrompt(brandRules) {
     const rulesSummary = BrandConfig.getRulesSummary();
-
-    const prompt = `You are BrandGuard AI, an expert brand compliance auditor for ${brandRules.name}.
+    return `You are BrandGuard AI, an expert brand compliance auditor for ${brandRules.name}.
 
 BRAND GUIDELINES:
 ${rulesSummary}
@@ -69,102 +72,133 @@ IMPORTANT RULES:
 - Return at least 3 findings, up to 8
 - overallScore should reflect the weighted average of all findings
 - Return ONLY the JSON object, nothing else`;
+  }
 
-    try {
-      // Strip data URL prefix if present
-      const base64Data = imageBase64.includes(',')
-        ? imageBase64.split(',')[1]
-        : imageBase64;
+  // ---- Parse & Validate AI Response ----
 
-      const requestBody = {
-        contents: [
-          {
-            parts: [
-              { text: prompt },
-              {
-                inline_data: {
-                  mime_type: 'image/jpeg',
-                  data: base64Data,
-                },
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          maxOutputTokens: 2048,
+  function parseAndValidate(text) {
+    let jsonStr = text.trim();
+    if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
+    }
+    const result = JSON.parse(jsonStr);
+    if (!result.findings || !Array.isArray(result.findings)) {
+      throw new Error('Invalid AI response structure');
+    }
+    return {
+      overallScore: result.overallScore || 0,
+      brandDetected: result.brandDetected || 'Unknown',
+      findings: result.findings.map(f => ({
+        category: f.category || 'Unknown',
+        status: ['pass', 'warning', 'fail'].includes(f.status) ? f.status : 'warning',
+        description: f.description || 'No description available.',
+        suggestion: f.suggestion || 'N/A',
+        confidence: f.confidence || 50,
+        details: {
+          foundValue: f.details?.foundValue || '',
+          expectedValue: f.details?.expectedValue || '',
         },
-      };
+      })),
+      aiPowered: true,
+    };
+  }
 
-      const response = await fetch(`${API_URL}?key=${apiKey}`, {
+  // ---- Gemini Vision API (with retry) ----
+
+  async function analyzeWithGemini(imageBase64, brandRules, retries = 2) {
+    const apiKey = getGeminiKey();
+    const prompt = buildPrompt(brandRules);
+
+    const base64Data = imageBase64.includes(',')
+      ? imageBase64.split(',')[1]
+      : imageBase64;
+
+    const requestBody = {
+      contents: [
+        {
+          parts: [
+            { text: prompt },
+            {
+              inline_data: {
+                mime_type: 'image/jpeg',
+                data: base64Data,
+              },
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 2048,
+      },
+    };
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Gemini API error:', response.status, errorData);
+      if (response.ok) {
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        return parseAndValidate(text);
+      }
 
-        if (response.status === 400 || response.status === 403) {
-          throw new Error('Invalid API key or access denied. Please check your Gemini API key in Settings.');
+      if (response.status === 429) {
+        if (attempt < retries) {
+          // Exponential backoff: 2s, 4s
+          const delay = Math.pow(2, attempt + 1) * 1000;
+          console.warn(`Gemini rate limited. Retrying in ${delay / 1000}s... (attempt ${attempt + 1}/${retries})`);
+          await new Promise(res => setTimeout(res, delay));
+          continue;
         }
-        throw new Error(`API error: ${response.status}`);
+        throw new Error('RATE_LIMIT: Gemini free tier quota exceeded. Please wait a minute and retry.');
       }
 
-      const data = await response.json();
-
-      // Extract text from Gemini response
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-      // Parse JSON from response (handle possible markdown wrapping)
-      let jsonStr = text.trim();
-
-      // Remove markdown code fences if present
-      if (jsonStr.startsWith('```')) {
-        jsonStr = jsonStr.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
+      if (response.status === 400 || response.status === 403) {
+        throw new Error('INVALID_KEY: Invalid Gemini API key or access denied. Please check your key in Settings.');
       }
 
-      const result = JSON.parse(jsonStr);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`Gemini API error: ${response.status}`);
+    }
+  }
 
-      // Validate structure
-      if (!result.findings || !Array.isArray(result.findings)) {
-        throw new Error('Invalid AI response structure');
-      }
+  // ---- Core Analysis (auto-selects provider) ----
 
-      return {
-        overallScore: result.overallScore || 0,
-        brandDetected: result.brandDetected || 'Unknown',
-        findings: result.findings.map(f => ({
-          category: f.category || 'Unknown',
-          status: ['pass', 'warning', 'fail'].includes(f.status) ? f.status : 'warning',
-          description: f.description || 'No description available.',
-          suggestion: f.suggestion || 'N/A',
-          confidence: f.confidence || 50,
-          details: {
-            foundValue: f.details?.foundValue || '',
-            expectedValue: f.details?.expectedValue || '',
-          },
-        })),
-        aiPowered: true,
-      };
+  async function analyzeImage(imageBase64, brandRules) {
+    const provider = getActiveProvider();
+
+    if (provider === 'demo') {
+      console.warn('No API key set — returning demo findings.');
+      return getDemoFindings(brandRules);
+    }
+
+    try {
+      console.log('Using Gemini Vision API...');
+      return await analyzeWithGemini(imageBase64, brandRules);
     } catch (err) {
       console.error('AI analysis failed:', err);
 
-      // Return error info so UI can show it
-      if (err.message.includes('API key') || err.message.includes('access denied')) {
-        return {
-          error: err.message,
-          overallScore: 0,
-          brandDetected: 'Error',
-          findings: [],
-          aiPowered: false,
-        };
+      // User-friendly error messages
+      let userMessage = err.message;
+      if (err.message.includes('RATE_LIMIT')) {
+        userMessage = err.message.replace('RATE_LIMIT: ', '');
+      } else if (err.message.includes('INVALID_KEY')) {
+        userMessage = err.message.replace('INVALID_KEY: ', '');
+      } else if (err.message.includes('Failed to fetch')) {
+        userMessage = 'Network error — make sure you are running this from a web server (not file://) and have internet access.';
       }
 
-      // Fallback to demo data on other errors
-      console.info('Falling back to demo findings.');
-      return getDemoFindings(brandRules);
+      return {
+        error: userMessage,
+        overallScore: 0,
+        brandDetected: 'Error',
+        findings: [],
+        aiPowered: false,
+      };
     }
   }
 
@@ -267,7 +301,6 @@ IMPORTANT RULES:
       };
     }
 
-    // Generic fallback
     return {
       overallScore: 75,
       brandDetected: rules.name || 'Unknown Brand',
@@ -304,7 +337,9 @@ IMPORTANT RULES:
   return {
     setApiKey,
     getApiKey,
+    getGeminiKey,
     hasApiKey,
+    getActiveProvider,
     analyzeImage,
     getDemoFindings,
   };

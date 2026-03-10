@@ -5,49 +5,29 @@
 
 const AIEngine = (() => {
   const GEMINI_KEY_STORAGE = 'brandguard_gemini_key';
-  const GROK_KEY_STORAGE = 'brandguard_grok_key';
 
   const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
-  const GROK_API_URL = 'https://api.x.ai/v1/chat/completions';
 
   // ---- API Key Management ----
 
-  function setGrokKey(key) {
-    if (key) {
-      localStorage.setItem(GROK_KEY_STORAGE, key.trim());
-    } else {
-      localStorage.removeItem(GROK_KEY_STORAGE);
-    }
-  }
-
-  function setGeminiKey(key) {
-    if (key) {
-      localStorage.setItem(GEMINI_KEY_STORAGE, key.trim());
-    } else {
-      localStorage.removeItem(GEMINI_KEY_STORAGE);
-    }
+  function setApiKey(key) {
+    key = key.trim();
+    localStorage.setItem(GEMINI_KEY_STORAGE, key);
   }
 
   function getApiKey() {
-    return localStorage.getItem(GROK_KEY_STORAGE)
-        || localStorage.getItem(GEMINI_KEY_STORAGE)
-        || '';
+    return localStorage.getItem(GEMINI_KEY_STORAGE) || '';
   }
 
   function getGeminiKey() {
     return localStorage.getItem(GEMINI_KEY_STORAGE) || '';
   }
 
-  function getGrokKey() {
-    return localStorage.getItem(GROK_KEY_STORAGE) || '';
-  }
-
   function hasApiKey() {
-    return getGrokKey().length > 0 || getGeminiKey().length > 0;
+    return getGeminiKey().length > 0;
   }
 
   function getActiveProvider() {
-    if (getGrokKey()) return 'grok';
     if (getGeminiKey()) return 'gemini';
     return 'demo';
   }
@@ -123,74 +103,6 @@ IMPORTANT RULES:
     };
   }
 
-  // ---- Grok Vision API ----
-
-  async function analyzeWithGrok(imageBase64, brandRules) {
-    const apiKey = getGrokKey();
-    const prompt = buildPrompt(brandRules);
-
-    const base64Data = imageBase64.includes(',')
-      ? imageBase64.split(',')[1]
-      : imageBase64;
-
-    // Ensure the base64Data is a complete data URI if it's not already
-    const imageDataUri = imageBase64.startsWith('data:') 
-      ? imageBase64 
-      : `data:image/jpeg;base64,${imageBase64}`;
-
-    const requestBody = {
-      model: 'grok-2-vision-1212',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: prompt
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: imageDataUri,
-                detail: 'high'
-              }
-            }
-          ]
-        }
-      ],
-      temperature: 0.2
-    };
-
-    const response = await fetch(GROK_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('Grok API error:', response.status, errorData);
-
-      if (response.status === 429) {
-        throw new Error('RATE_LIMIT: Grok API rate limit hit.');
-      }
-      if (response.status === 401) {
-        throw new Error('INVALID_KEY: Invalid Grok API key. Please check your key in Settings.');
-      }
-      if (response.status === 403) {
-        throw new Error('PAYMENT_REQUIRED: Your xAI account does not have credits or an active subscription.');
-      }
-      throw new Error(`Grok API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const text = data.choices?.[0]?.message?.content || '';
-    return parseAndValidate(text);
-  }
-
   // ---- Gemini Vision API (with retry) ----
 
   async function analyzeWithGemini(imageBase64, brandRules, retries = 2) {
@@ -242,7 +154,7 @@ IMPORTANT RULES:
           await new Promise(res => setTimeout(res, delay));
           continue;
         }
-        throw new Error('RATE_LIMIT: Gemini free tier quota exceeded. Supply a Grok API key, or wait a minute and retry.');
+        throw new Error('RATE_LIMIT: Gemini free tier quota exceeded. Please wait a minute and retry.');
       }
 
       if (response.status === 400 || response.status === 403) {
@@ -265,25 +177,10 @@ IMPORTANT RULES:
     }
 
     try {
-      if (provider === 'grok') {
-        console.log('Using Grok Vision API...');
-        return await analyzeWithGrok(imageBase64, brandRules);
-      } else {
-        console.log('Using Gemini Vision API...');
-        return await analyzeWithGemini(imageBase64, brandRules);
-      }
+      console.log('Using Gemini Vision API...');
+      return await analyzeWithGemini(imageBase64, brandRules);
     } catch (err) {
       console.error('AI analysis failed:', err);
-
-      // If Grok fails due to rate limit, try Gemini as fallback
-      if (provider === 'grok' && err.message.includes('RATE_LIMIT') && getGeminiKey()) {
-        console.warn('Grok rate limited — falling back to Gemini...');
-        try {
-          return await analyzeWithGemini(imageBase64, brandRules);
-        } catch (fallbackErr) {
-          console.error('Gemini fallback also failed:', fallbackErr);
-        }
-      }
 
       // User-friendly error messages
       let userMessage = err.message;
@@ -291,8 +188,6 @@ IMPORTANT RULES:
         userMessage = err.message.replace('RATE_LIMIT: ', '');
       } else if (err.message.includes('INVALID_KEY')) {
         userMessage = err.message.replace('INVALID_KEY: ', '');
-      } else if (err.message.includes('PAYMENT_REQUIRED')) {
-        userMessage = err.message.replace('PAYMENT_REQUIRED: ', '');
       } else if (err.message.includes('Failed to fetch')) {
         userMessage = 'Network error — make sure you are running this from a web server (not file://) and have internet access.';
       }
@@ -440,11 +335,9 @@ IMPORTANT RULES:
   }
 
   return {
-    setGrokKey,
-    setGeminiKey,
+    setApiKey,
     getApiKey,
     getGeminiKey,
-    getGrokKey,
     hasApiKey,
     getActiveProvider,
     analyzeImage,

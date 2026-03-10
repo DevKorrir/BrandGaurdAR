@@ -949,17 +949,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const settingsModal = document.getElementById('settings-modal');
   const btnSettingsOpen = document.getElementById('btn-settings-open');
   const btnSettingsClose = document.getElementById('btn-settings-close');
-  const btnSettingsCancel = document.getElementById('btn-settings-cancel');
   const btnSettingsSave = document.getElementById('btn-settings-save');
   const inputApiKey = document.getElementById('input-api-key');
-  const inputGrokKey = document.getElementById('input-grok-key');
   const apiStatusText = document.getElementById('api-status-text');
   const apiStatus = document.getElementById('api-status');
 
   function showSettingsModal() {
     if (settingsModal) settingsModal.style.display = 'flex';
     if (inputApiKey) inputApiKey.value = AIEngine.getGeminiKey();
-    if (inputGrokKey) inputGrokKey.value = AIEngine.getGrokKey();
     updateApiStatus();
   }
 
@@ -971,12 +968,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const hasKey = AIEngine.hasApiKey();
     if (apiStatus) apiStatus.className = `api-status ${hasKey ? 'connected' : 'disconnected'}`;
     if (apiStatusText) {
-      if (hasKey) {
-        const providerText = AIEngine.getActiveProvider() === 'grok' ? 'xAI Grok' : 'Google Gemini';
-        apiStatusText.textContent = `✅ API keys configured — ${providerText} active`;
-      } else {
-        apiStatusText.textContent = '⚠️ No API key set — demo mode active';
-      }
+      apiStatusText.textContent = hasKey
+        ? '✅ API key configured — AI analysis active'
+        : '⚠️ No API key set — demo mode active';
     }
   }
 
@@ -986,12 +980,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (btnSettingsSave) {
     btnSettingsSave.addEventListener('click', () => {
-      const geminiKey = inputApiKey?.value?.trim() || '';
-      const grokKey = inputGrokKey?.value?.trim() || '';
-      
-      AIEngine.setGeminiKey(geminiKey);
-      AIEngine.setGrokKey(grokKey);
-      
+      const gKey = inputApiKey?.value?.trim() || '';
+      if (gKey) AIEngine.setApiKey(gKey);
       updateApiStatus();
       hideSettingsModal();
     });
